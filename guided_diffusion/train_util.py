@@ -150,6 +150,7 @@ class TrainLoop:
             self.opt.load_state_dict(state_dict)
 
     def run_loop(self):
+        logger.log("Running loop...")
         while (
                 not self.lr_anneal_steps
                 or self.step + self.resume_step < self.lr_anneal_steps

@@ -36,6 +36,7 @@ class TimestepEmbedSequential(nn.Sequential, TimestepBlock):
             if isinstance(layer, TimestepBlock):
                 x = layer(x, emb)
             else:
+                # print(x.shape)
                 x = layer(x)
         return x
 

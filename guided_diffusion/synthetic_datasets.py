@@ -225,6 +225,7 @@ class Synthetic2DDataset(Dataset):
         else:
             raise NotImplementedError
         self.points = normalize(points).astype(np.float32)
+        print(points)
 
     def __len__(self):
         return self.n_samples
