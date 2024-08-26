@@ -28,6 +28,8 @@ def main():
     i = args.source
     j = args.target
     total_image = args.total_image
+    source_shape = (args.source_shape, args.source_shape)
+    target_shape = (args.target_shape, args.target_shape)
     logger.log(f"reading models for low dose data...")
 
     source_dir = os.path.join(code_folder, f"models/lowdose/{i}")
@@ -54,7 +56,7 @@ def main():
         source_path = os.path.join(image_subfolder, f'test_source.npy')
         np.save(source_path, source.cpu().numpy())
         source_image_path = os.path.join(image_subfolder, f'test_source.png')
-        gener_image_2D(source.cpu().numpy(), source_image_path, (360,360))
+        gener_image_2D(source.cpu().numpy(), source_image_path, shape = source_shape, FORCED = True)
 
         noise = diffusion.ddim_reverse_sample_loop(
             source_model, source,
@@ -82,21 +84,21 @@ def main():
         source_path = os.path.join(image_subfolder, f'source{k}.npy')
         np.save(source_path, source)
         source_image_path = os.path.join(image_subfolder, f'source{k}.png')
-        gener_image_2D(source, source_image_path, (360,360), logger=logger)
+        gener_image_2D(source, source_image_path, source_shape, logger=logger, FORCED = True)
 
         # latent = np.concatenate(latent, axis=0)
         latent = noise.cpu().numpy()
         latent_path = os.path.join(image_subfolder, f'latent{k}.npy')
         np.save(latent_path, latent)
         latent_image_path = os.path.join(image_subfolder, f'latent{k}.png')
-        gener_image_2D(latent, latent_image_path, (360,360), logger=logger)
+        gener_image_2D(latent, latent_image_path, target_shape, logger=logger, FORCED = True)
 
         # target = np.concatenate(target, axis=0)
         target = target.cpu().numpy()
         target_path = os.path.join(image_subfolder, f'target{k}.npy')
         np.save(target_path, target)
         target_image_path = os.path.join(image_subfolder, f'target{k}.png')
-        gener_image_2D(target, target_image_path, (360,360), logger=logger)
+        gener_image_2D(target, target_image_path, target_shape, logger=logger, FORCED = True)
 
         dist.barrier()
         logger.log(f"image {k} translation complete")
@@ -137,6 +139,18 @@ def create_argparser():
         "--total_image",
         type=int,
         default=6,
+        help="Total number of images to generate."
+    )
+    parser.add_argument(
+        "--source_shape",
+        type=int,
+        default=360,
+        help="Total number of images to generate."
+    )
+    parser.add_argument(
+        "--target_shape",
+        type=int,
+        default=360,
         help="Total number of images to generate."
     )
     add_dict_to_argparser(parser, defaults)

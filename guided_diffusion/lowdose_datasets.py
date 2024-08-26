@@ -4,21 +4,27 @@ import blobfile as bf
 import numpy as np
 from PIL import Image
 from torch.utils.data import DataLoader, Dataset
+import math
+from PIL import Image
+from skimage.transform import resize
 
 class LowDoseDataset(Dataset):
-    def __init__(self,  image_path, resize=False, ratio=0):
+    def __init__(self,  image_path, image_size = 0, in_channels = 3):
         super().__init__()
-        self.points, self.image_shape = self.read_images(
-            self.get_image_paths(image_path), resize=resize, ratio=ratio)
+        self.imgs, self.image_shape = self.read_images(
+            self.get_image_paths(image_path), image_size = image_size)
         self.resize = resize
-        self.n_samples = self.points.shape[0]
+        self.n_samples = self.imgs.shape[0]
 
     def __len__(self):
         return self.n_samples
 
     def __getitem__(self, index):
-        return self.points[index], {}
-
+        return self.imgs[index], {}
+    
+    def shape(self):
+        return self.image_shape
+    
     @staticmethod
     def get_image_paths(directory_path):
         # Check if the path is a directory and list all files
@@ -28,17 +34,16 @@ class LowDoseDataset(Dataset):
             raise ValueError(f"Provided path is not a directory: {directory_path}")
 
     @staticmethod
-    def read_images(image_paths, resize, ratio=0):
+    def read_images(image_paths, image_size,  ratio=0):
         """Reads the image at the given path as grayscale. Returns (arr, shape):
-        points in the image and their shape."""
+        the image and their shape."""
         images = []
         for path in image_paths:
-            arr, shape = LowDoseDataset.read_image(path, resize=resize, ratio=ratio)
+            arr, shape = LowDoseDataset.read_image(path, image_size = image_size)
             images.append(arr)
-        points = np.array(images) 
-        points = np.array(images).reshape(-1, 2)
-        print(points.shape)
-        return points, shape
+        imgs = np.array(images) 
+        print(imgs.shape)
+        return imgs, shape
 
     @staticmethod
     def normalize(arr):
@@ -51,7 +56,7 @@ class LowDoseDataset(Dataset):
         return arr * 255.0
 
     @staticmethod
-    def read_image(image_path, resize=False, ratio=0):
+    def read_image(image_path, image_size, ratio=0):
         """Reads the image at the given path as grayscale. Returns (arr, shape):
         points in the image and their shape."""
         with bf.BlobFile(image_path, "rb") as f:
@@ -59,19 +64,19 @@ class LowDoseDataset(Dataset):
             image.load()
         image = image.convert("L")
         arr = np.array(image).astype(np.float32)
-        if resize:
-            arr = arr[::ratio, ::ratio]
-        shape = arr.shape
-        arr = arr.reshape(-1, 2)  # Reshape to (N, 2) for a single channel
-        arr = LowDoseDataset.normalize(arr)
+        if image_size:
+            arr = resize(arr, (image_size, image_size), anti_aliasing=True)
+            grey_arr = np.stack([arr]*3, axis=0)
+        shape = grey_arr.shape
+        grey_arr = LowDoseDataset.normalize(grey_arr)
         #print(arr.shape)
-        return arr, shape
+        return grey_arr, shape
 
-def load_lowdose_data(batch_size, image_path, logger, ratio=0, training = True):
+def load_lowdose_data(batch_size, image_path, logger, ratio=0, training = True, image_size = 256):
     """Loads the low dose data from the given directory."""
     dataset = LowDoseDataset(
         image_path=image_path,
-        ratio=ratio
+        image_size = image_size
     )
     logger.log(f"dataset length: {len(dataset)}, {dataset.image_shape}")
 
@@ -82,13 +87,21 @@ def load_lowdose_data(batch_size, image_path, logger, ratio=0, training = True):
     else:
         yield from loader
 
-def gener_image_2D(points, filename='image.png', shape = (360,360), logger = None):
+def gener_image_2D(points, filename='image.png', shape = (360,360), logger = None, FORCED = False):
+    if logger:
+        logger.log(f"generating image {filename} original value: {points}")
+    
+    points = LowDoseDataset.unnormalize(points)
     if shape[0] * shape[1] == points.shape[0] * 2:
-        if logger:
-            logger.log(f"generating image {filename} original value: {points}")
-        img = points.reshape(shape)
-        img = LowDoseDataset.unnormalize(img)
+        img = points.reshape((shape))
         # print(img.max(), img.min())
+    elif FORCED:
+        source_shape = (int(math.sqrt(points.shape[0] * 2)), int(math.sqrt(points.shape[0] * 2))) 
+        img = Image.fromarray(points.reshape(source_shape))
+        print(source_shape, shape)
+        img = img.resize(shape)     
+    else:
+        print(f"Failed to generate img: shape[0] * shape[1] = {shape[0] * shape[1]}, but total points number is: {points.shape[0] * 2}")
     plt.axis('off')
     plt.imshow(img, cmap="gray", vmin=0, vmax=255)
     plt.savefig(filename, bbox_inches='tight', transparent=False, pad_inches=0)

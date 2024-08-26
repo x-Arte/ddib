@@ -6,9 +6,8 @@ import argparse
 
 from guided_diffusion import dist_util, logger
 from guided_diffusion.resample import create_named_schedule_sampler
-from guided_diffusion.script_util import model_and_diffusion_defaults_2d, create_model_and_diffusion_2d, args_to_dict, \
+from guided_diffusion.script_util import model_and_diffusion_defaults, create_model_and_diffusion, args_to_dict, \
     add_dict_to_argparser
-from guided_diffusion.synthetic_datasets import Synthetic2DType, load_2d_data
 from guided_diffusion.train_util import TrainLoop
 from guided_diffusion.lowdose_datasets import load_lowdose_data
 
@@ -20,15 +19,15 @@ def main():
     dist_util.setup_dist()
     logger.configure()
 
+    logger.log("creating low-dose loader...")
+    data = load_lowdose_data(batch_size=args.batch_size, image_path=args.image_path, logger=logger, image_size = args.image_size)
+
     logger.log("creating low-dose model and diffusion...")
-    model, diffusion = create_model_and_diffusion_2d(
-        **args_to_dict(args, model_and_diffusion_defaults_2d().keys())
-    )
+    model, diffusion = create_model_and_diffusion(**args_to_dict(args, model_and_diffusion_defaults().keys()))
     model.to(dist_util.dev())
     schedule_sampler = create_named_schedule_sampler(args.schedule_sampler, diffusion)
 
-    logger.log("creating low-dose loader...")
-    data = load_lowdose_data(batch_size=args.batch_size, image_path=args.image_path, logger=logger)
+
 
     logger.log("training the diffusion model...")
     TrainLoop(
@@ -52,21 +51,20 @@ def main():
 
 def create_argparser():
     defaults = dict(
-        task=0,  # 0 to 5 inclusive
-        schedule_sampler="uniform",
         lr=1e-4,
+        schedule_sampler="uniform",
+        microbatch=-1,
         weight_decay=0.0,
         lr_anneal_steps=0,
-        batch_size=30000,
-        microbatch=-1,  # -1 disables microbatches
-        ema_rate="0.9999",  # comma-separated list of EMA values
+        batch_size=16,
+        ema_rate="0.9999",
         log_interval=10,
         save_interval=10000,
         resume_checkpoint="",
-        use_fp16=False,
-        fp16_scale_growth=1e-3,
+        image_size = 360,
+        fp16_scale_growth=1e-3
     )
-    defaults.update(model_and_diffusion_defaults_2d())
+    defaults.update(model_and_diffusion_defaults())
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--image_path",
