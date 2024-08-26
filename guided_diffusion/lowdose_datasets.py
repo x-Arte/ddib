@@ -59,16 +59,21 @@ class LowDoseDataset(Dataset):
     def read_image(image_path, image_size, ratio=0):
         """Reads the image at the given path as grayscale. Returns (arr, shape):
         points in the image and their shape."""
-        with bf.BlobFile(image_path, "rb") as f:
-            image = Image.open(f)
-            image.load()
-        image = image.convert("L")
-        arr = np.array(image).astype(np.float32)
+        data_type = image_path.split(".")[-1]
+        if data_type == "png":
+            with bf.BlobFile(image_path, "rb") as f:
+                image = Image.open(f)
+                image.load()
+            image = image.convert("L")
+            arr = np.array(image).astype(np.float32)
+            arr = LowDoseDataset.normalize(arr)
+        elif data_type == "npy":
+            arr = np.load(image_path).astype(np.float32)
         if image_size:
             arr = resize(arr, (image_size, image_size), anti_aliasing=True)
             grey_arr = np.stack([arr]*3, axis=0)
-        shape = grey_arr.shape
-        grey_arr = LowDoseDataset.normalize(grey_arr)
+            shape = grey_arr.shape
+
         #print(arr.shape)
         return grey_arr, shape
 
