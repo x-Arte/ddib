@@ -20,7 +20,7 @@ def main():
     logger.configure()
 
     logger.log("creating low-dose loader...")
-    data = load_lowdose_data(batch_size=args.batch_size, image_path=args.image_path, logger=logger, image_size = args.image_size)
+    data = load_lowdose_data(batch_size=args.batch_size, image_path=args.image_path, logger=logger, image_size = args.image_size, num_25D = args.num_25D)
 
     logger.log("creating low-dose model and diffusion...")
     model, diffusion = create_model_and_diffusion(**args_to_dict(args, model_and_diffusion_defaults().keys()))
@@ -77,6 +77,12 @@ def create_argparser():
         type=str,
         default="",
         help="Dose rate for the low-dose image dataset."
+    )
+    parser.add_argument(
+        "--num_25D",
+        type=int,
+        default="",
+        help="number of images used in training"
     )
     add_dict_to_argparser(parser, defaults)
     return parser
