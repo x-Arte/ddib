@@ -1,6 +1,6 @@
 # RA modification on DDIB
 
-Turn the trainging method from points to 2.5d <br/>
+Turn the trainging method from points to 2.5d <br>
 ----------------------
 ⬇️ original README
 
