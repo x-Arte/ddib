@@ -1,7 +1,8 @@
 # RA modification on DDIB
-Turn the trainging method from points to 2.5d
 
-
+Turn the trainging method from points to 2.5d <br/>
+----------------------
+⬇️ original README
 
 # Dual Diffusion Implicit Bridges (ICLR 2023)
 
